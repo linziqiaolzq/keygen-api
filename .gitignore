@@ -24,8 +24,8 @@
 .byebug_history
 
 # Ignore environment files
-/.env*
-!.env.sample
+/.env
+!.env
 
 # Ignore Redis/DB dumps
 /*.dump
