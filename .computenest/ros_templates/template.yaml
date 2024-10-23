@@ -101,15 +101,14 @@ Parameters:
     Label:
       en: VSwitch ID
       zh-cn: 交换机实例ID
-    Default: ''
     AssociationProperty: 'ALIYUN::ECS::VSwitch::VSwitchId'
     AssociationPropertyMetadata:
       VpcId: VpcId
       ZoneId: ZoneId
-  AdminPassword:
+  Password:
     Type: String
     AssociationProperty: ALIYUN::ECS::Instance::Password
-    Label: 管理员密码
+    Label: 密码
     NoEcho: True
 Resources:
   SecurityGroup:
@@ -120,7 +119,27 @@ Resources:
       VpcId:
         Ref: VpcId
       SecurityGroupIngress:
+        - PortRange: 5432/5432
+          Priority: 1
+          SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          NicType: internet
+        - PortRange: 6379/6379
+          Priority: 1
+          SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          NicType: internet
+        - PortRange: 3000/3000
+          Priority: 1
+          SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          NicType: internet
         - PortRange: 80/80
+          Priority: 1
+          SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          NicType: internet
+        - PortRange: 443/443
           Priority: 1
           SourceCidrIp: 0.0.0.0/0
           IpProtocol: tcp
@@ -180,7 +199,6 @@ Resources:
                     "https://huecker.io",
                     "https://dockerhub.timeweb.cloud",
                     "https://noohub.ru",
-                    "https://vlgh0kqj.mirror.aliyuncs.com"
                 ]
             }
             EOF
@@ -218,18 +236,9 @@ Resources:
             WantedBy=multi-user.target
             EOF
 
-            # 在Docker Compose启动前执行此命令片段，命令中可以引用参数
-            echo "before docker compose starts"
-            echo ${AdminPassword}
-            # 使用sed命令将docker-compose.yaml中的password替换为${AdminPassword}
-            # AdminPassword在用户实际部署时填写，/home/admin/application/docker-compose.yaml为固定路径，无需修改
-            sed -i 's/password/\${AdminPassword}/g' /home/admin/application/docker-compose.yaml
-            
+            echo 'Password=${Password}' >> /home/admin/application/docker_compose/.env
             systemctl start docker-compose-app
             sleep 10
-            # 在Docker Compose启动后执行此命令片段，命令中可以引用参数
-            echo "after docker compose starts"
-            
 
             ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-${RegionId}.oss-${RegionId}-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" >> /root/install_cms_agent.log 2>&1
           - RegionId:
@@ -241,7 +250,7 @@ Outputs:
       zh-cn: 访问页面。
     Value:
       Fn::Sub:
-        - 'http://${ServerAddress}:80'
+        - http://${ServerAddress}:5432, http://${ServerAddress}:6379, http://${ServerAddress}:3000, http://${ServerAddress}:80, http://${ServerAddress}:443
         - ServerAddress:
             Fn::Select:
             - 0
@@ -269,7 +278,7 @@ Metadata:
         Label:
           default: 可用区配置
       - Parameters:
-          - AdminPassword
+          - Password
         Label:
           en: Software Configuration
           zh-cn: 软件配置
